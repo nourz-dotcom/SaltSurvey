@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Over: Stop the Salt — Baseline Survey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#150E2E;
+    --bg-deep:#0E0921;
+    --panel:#241748;
+    --panel-hi:#2F1E5C;
+    --line:#4A3585;
+    --magenta:#FF2D6F;
+    --cyan:#35E6E0;
+    --amber:#FFD166;
+    --ink:#F2ECFF;
+    --ink-dim:#A99ACB;
+    --pixel:"Press Start 2P", "Courier New", monospace;
+    --body:"Chakra Petch", "Trebuchet MS", system-ui, sans-serif;
+  }
+  /* The cabinet is dark by design; tokens stay stable in every viewer theme. */
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#150E2E; --ink:#F2ECFF; }
+  }
+  :root[data-theme="dark"]{ --bg:#150E2E; --ink:#F2ECFF; }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:17px;
+    line-height:1.5;
+    -webkit-text-size-adjust:100%;
+    min-height:100vh;
+    background-image:
+      radial-gradient(1100px 620px at 50% -10%, #33206B 0%, rgba(51,32,107,0) 62%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+    background-attachment:fixed;
+  }
+  body::after{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:9;
+    background:repeating-linear-gradient(180deg, rgba(0,0,0,.20) 0 1px, rgba(0,0,0,0) 1px 3px);
+    mix-blend-mode:multiply;
+    opacity:.55;
+  }
+  .wrap{max-width:660px;margin:0 auto;padding:18px 16px 64px;position:relative;z-index:1}
+
+  /* ---------- HUD ---------- */
+  .hud{
+    position:sticky; top:0; z-index:8;
+    background:linear-gradient(180deg,#1D1240 0%, rgba(29,18,64,.92) 100%);
+    border:2px solid var(--line);
+    border-radius:4px;
+    padding:10px 12px;
+    margin-bottom:22px;
+    backdrop-filter:blur(3px);
+  }
+  .hud[hidden]{display:none}
+  .hud-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .hud-player{font-family:var(--pixel);font-size:9px;color:var(--cyan);letter-spacing:.5px}
+  .hud-round{font-family:var(--pixel);font-size:9px;color:var(--amber)}
+  .bar{
+    height:14px;margin-top:9px;
+    background:#120C28;
+    border:2px solid var(--line);
+    padding:2px;
+    display:flex;gap:2px;
+  }
+  .bar i{
+    flex:1;
+    background:#221646;
+    transition:background .18s ease;
+  }
+  .bar i.on{background:linear-gradient(180deg,var(--cyan),#12B4B0)}
+  .bar-note{margin-top:6px;font-size:13px;color:var(--ink-dim)}
+
+  /* ---------- Attract screen ---------- */
+  .attract{padding:34px 0 10px;text-align:center}
+  .marquee{
+    display:inline-block;
+    font-family:var(--pixel);
+    font-size:clamp(30px,10.5vw,62px);
+    line-height:1.08;
+    letter-spacing:-1px;
+    color:var(--ink);
+    text-shadow:
+      3px 0 0 var(--magenta),
+      -3px 0 0 var(--cyan),
+      0 6px 0 #0B0720;
+    margin:0;
+  }
+  .marquee span{display:block}
+  .tagline{
+    font-size:19px;font-weight:600;color:var(--amber);
+    margin:22px auto 0;max-width:22ch;
+  }
+  .attract p.lede{color:var(--ink-dim);max-width:44ch;margin:16px auto 0;font-size:16px}
+  .coin{
+    margin-top:30px;display:inline-block;
+    font-family:var(--pixel);font-size:11px;
+    background:var(--magenta);color:#fff;
+    border:none;border-bottom:5px solid #A8113F;
+    padding:18px 26px;border-radius:3px;
+    cursor:pointer;
+  }
+  .coin:hover{background:#FF4A82}
+  .coin:active{transform:translateY(3px);border-bottom-width:2px}
+  .blink{animation:blink 1.2s steps(2,end) infinite;font-family:var(--pixel);font-size:9px;color:var(--cyan);margin-top:16px}
+  @keyframes blink{50%{opacity:0}}
+  .meta{margin-top:30px;font-size:14px;color:var(--ink-dim);border-top:2px solid var(--line);padding-top:14px}
+
+  /* ---------- Round banner ---------- */
+  .banner{
+    position:fixed;inset:0;z-index:20;display:grid;place-items:center;
+    background:rgba(11,7,32,.94);
+    text-align:center;
+  }
+  .banner[hidden]{display:none}
+  .banner b{display:block;font-family:var(--pixel);font-size:clamp(20px,7vw,38px);color:var(--amber)}
+  .banner em{display:block;font-style:normal;margin-top:16px;font-size:20px;color:var(--ink)}
+  .banner .inner{animation:wipe .42s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes wipe{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+
+  /* ---------- Questions ---------- */
+  .round-head{margin:0 0 20px}
+  .round-head h2{font-family:var(--pixel);font-size:14px;color:var(--cyan);margin:0 0 8px;line-height:1.5}
+  .round-head p{margin:0;color:var(--ink-dim);font-size:15px}
+
+  .q{
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-left:6px solid var(--magenta);
+    border-radius:3px;
+    padding:16px 16px 14px;
+    margin-bottom:16px;
+  }
+  .q.done{border-left-color:var(--cyan)}
+  .q-n{font-family:var(--pixel);font-size:9px;color:var(--ink-dim);display:block;margin-bottom:8px}
+  .q-t{font-size:18px;font-weight:600;margin:0 0 4px;line-height:1.35}
+  .q-hint{font-size:14px;color:var(--ink-dim);margin:0 0 12px}
+  .opts{display:grid;gap:8px;margin-top:12px}
+  .opt{
+    display:flex;align-items:center;gap:12px;
+    width:100%;min-height:52px;
+    text-align:left;
+    background:var(--panel-hi);
+    color:var(--ink);
+    border:2px solid #3B2A73;
+    border-radius:3px;
+    padding:10px 14px;
+    font-family:var(--body);font-size:16px;font-weight:500;
+    cursor:pointer;
+  }
+  .opt:hover{border-color:var(--ink-dim)}
+  .opt .mark{
+    flex:0 0 auto;width:18px;height:18px;
+    border:2px solid #6A54AD;background:#160F33;
+  }
+  .opt[data-shape="single"] .mark{transform:rotate(45deg)}
+  .opt[aria-pressed="true"]{
+    border-color:var(--cyan);
+    background:#153B4A;
+    color:#fff;
+  }
+  .opt[aria-pressed="true"] .mark{background:var(--cyan);border-color:var(--cyan)}
+  .opt:focus-visible,.coin:focus-visible,.nav button:focus-visible,textarea:focus-visible,input:focus-visible,.ghost:focus-visible{
+    outline:3px solid var(--amber);outline-offset:2px;
+  }
+  input[type="text"],textarea{
+    width:100%;margin-top:8px;
+    background:#160F33;color:var(--ink);
+    border:2px solid #3B2A73;border-radius:3px;
+    padding:11px 12px;font-family:var(--body);font-size:16px;
+  }
+  textarea{min-height:92px;resize:vertical}
+  input[type="text"]::placeholder,textarea::placeholder{color:#7C6BA8}
+
+  /* ---------- Nav ---------- */
+  .nav{display:flex;gap:10px;align-items:center;margin-top:24px}
+  .nav button{
+    font-family:var(--pixel);font-size:10px;
+    padding:16px 20px;border-radius:3px;cursor:pointer;
+    border:none;
+  }
+  .next{
+    flex:1;
+    background:var(--magenta);color:#fff;border-bottom:5px solid #A8113F;
+  }
+  .next:hover{background:#FF4A82}
+  .next:active{transform:translateY(3px);border-bottom-width:2px}
+  .next:disabled{background:#3A2C63;color:#8879B5;border-bottom-color:#2A1F49;cursor:not-allowed;transform:none}
+  .back{
+    background:transparent;color:var(--ink-dim);
+    border:2px solid var(--line);
+  }
+  .back:hover{color:var(--ink)}
+  .nag{margin-top:12px;font-size:14px;color:var(--amber)}
+  .nag[hidden]{display:none}
+
+  /* ---------- Finish ---------- */
+  .finish{text-align:center;padding:26px 0}
+  .finish .score{font-family:var(--pixel);font-size:clamp(18px,6vw,30px);color:var(--cyan);margin:0 0 18px}
+  .finish p{color:var(--ink);max-width:46ch;margin:0 auto 14px}
+  .finish p.small{color:var(--ink-dim);font-size:15px}
+  .facts{
+    text-align:left;background:var(--panel);border:2px solid var(--line);
+    border-radius:3px;padding:16px;margin:26px 0 0;
+  }
+  .facts h3{font-family:var(--pixel);font-size:11px;color:var(--amber);margin:0 0 12px}
+  .facts ul{margin:0;padding-left:20px}
+  .facts li{margin-bottom:9px;font-size:16px}
+  .facts li:last-child{margin-bottom:0}
+  .ghost{
+    margin-top:28px;background:transparent;color:var(--ink-dim);
+    border:2px solid var(--line);border-radius:3px;
+    padding:12px 16px;font-family:var(--body);font-size:15px;cursor:pointer;
+  }
+  .ghost:hover{color:var(--ink)}
+
+  /* ---------- Booth tools ---------- */
+  .tools{
+    background:var(--panel);border:2px solid var(--amber);border-radius:3px;
+    padding:16px;margin-top:22px;text-align:left;
+  }
+  .tools[hidden]{display:none}
+  .tools h3{font-family:var(--pixel);font-size:11px;color:var(--amber);margin:0 0 10px}
+  .tools .count{font-size:17px;margin:0 0 14px}
+  .tools .count b{color:var(--cyan);font-size:22px}
+  .tools .row{display:flex;flex-wrap:wrap;gap:8px}
+  .tools button{
+    background:var(--panel-hi);color:var(--ink);border:2px solid var(--line);
+    border-radius:3px;padding:11px 14px;font-family:var(--body);font-size:15px;cursor:pointer;
+  }
+  .tools button:hover{border-color:var(--ink-dim)}
+  .tools .danger{border-color:#8A2247;color:#FF9FBF}
+  .tools .msg{margin-top:12px;font-size:14px;color:var(--cyan);min-height:20px}
+  .tools textarea{font-size:12px;min-height:150px;font-family:"Courier New",monospace}
+
+  .foot{margin-top:34px;padding-top:16px;border-top:2px solid var(--line);font-size:13px;color:var(--ink-dim);text-align:center}
+  .foot button{background:none;border:none;color:#6E5DA0;font-family:var(--body);font-size:13px;cursor:pointer;text-decoration:underline;padding:4px}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+  }
+  @media (max-width:420px){
+    .q{padding:14px 12px}
+    .nav button{font-size:9px;padding:15px 14px}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hud" id="hud" hidden>
+    <div class="hud-row">
+      <span class="hud-player">PLAYER 1</span>
+      <span class="hud-round" id="hudRound">ROUND 1/4</span>
+    </div>
+    <div class="bar" id="bar" aria-hidden="true"></div>
+    <div class="bar-note" id="barNote">0 of 17 answered</div>
+  </div>
+
+  <main id="stage" aria-live="polite"></main>
+
+  <div class="foot">
+    <span id="footText">Anonymous · for research purposes only · no names collected</span>
+    <br><button id="toolsToggle" type="button">Booth tools</button>
+  </div>
+</div>
+
+<div class="banner" id="banner" hidden>
+  <div class="inner">
+    <b id="bannerTitle">ROUND 2</b>
+    <em id="bannerSub">Your eating habits</em>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var KEY = "gameover_salt_responses_v1";
+
+  /* ====== EDIT THIS ======
+     Paste your Google Apps Script Web App URL below (ends in /exec).
+     Until you do, responses are only saved locally on each device (Booth tools). */
+  var SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxbFqVshJVrroky35FPsYq402h0j-y3ukI8X_2iflcqmVKb0n7obFl-PL_-pKto6UNA3A/exec";
+  /* ======================= */
+
+  /* ---------------- Survey definition ---------------- */
+  var ROUNDS = [
+    {
+      title: "ROUND 1 — PLAYER SELECT",
+      sub: "Three quick ones so we know who's playing.",
+      banner: "Your details",
+      qs: [
+        {id:"q1", n:1, t:"How old are you?", type:"single",
+         opts:["13","14","15","16","17","18"]},
+        {id:"q2", n:2, t:"What is your gender?", type:"single",
+         opts:["Male","Female","Prefer not to say"]},
+        {id:"q3", n:3, t:"What grade are you in?", type:"single",
+         opts:["Grade 7","Grade 8","Grade 9","Grade 10","Grade 11","Grade 12"], other:true}
+      ]
+    },
+    {
+      title: "ROUND 2 — FUEL CHECK",
+      sub: "Be honest. Nobody sees your individual answers.",
+      banner: "Your eating habits",
+      qs: [
+        {id:"q4", n:4, t:"How often do you eat fast food?", type:"single",
+         opts:["Every day","4–6 times a week","2–3 times a week","Once a week","Less than once a week","Almost never"]},
+        {id:"q6", n:5, t:"How often do you order fast food through a delivery app?",
+         hint:"Talabat, Deliveroo, Careem Food, Noon Food, InstaShop or similar.", type:"single",
+         opts:["Every day","4–6 times a week","2–3 times a week","Once a week","Less than once a week","Almost never — I never order in"]},
+        {id:"q7", n:6, t:"When you pick fast food, what matters most?",
+         hint:"Choose the one that decides it for you.", type:"single",
+         opts:["Taste","Price","Portion size","Convenience","Calories","Salt or sodium content","How healthy it is"], other:true},
+        {id:"q8", n:7, t:"How often do you check the nutrition label or sodium content before buying?", type:"single",
+         opts:["Always","Often","Sometimes","Rarely","Never"]}
+      ]
+    },
+    {
+      title: "ROUND 3 — BOSS INTEL",
+      sub: "Guessing is fine. We want your starting score, not a perfect one.",
+      banner: "What you know about sodium",
+      qs: [
+        {id:"q10", n:8, t:"Which of these are usually high in sodium?",
+         hint:"Pick every one you think counts.", type:"multi",
+         opts:["Instant noodles","Chips","Fast food","Processed meats","Packaged foods","Fresh fruit","Fresh vegetables","Not sure"]},
+        {id:"q11", n:9, t:"Where does most of the sodium in a typical diet come from?", type:"single",
+         opts:["Fresh fruit","Fresh vegetables","Processed and packaged foods","Drinking water","Not sure"]},
+        {id:"q12", n:10, t:"Do you know the difference between salt and sodium?", type:"single",
+         opts:["Yes","No","Not sure"]},
+        {id:"q13", n:11, t:"What can happen if you regularly eat too much sodium?",
+         hint:"Pick every one you think counts.", type:"multi",
+         opts:["Blood pressure goes up","Higher risk of heart disease","Higher risk of stroke","Kidney problems","Nothing serious","Not sure"]},
+        {id:"q14", n:12, t:"How much salt a day does the WHO recommend for adults?", type:"single",
+         opts:["Less than 5 g","5–10 g","10–15 g","More than 15 g","Not sure"]},
+        {id:"q15", n:13, t:"How confident are you that you could spot a high-sodium food?", type:"single",
+         opts:["Very confident","Confident","Somewhat confident","Not very confident","Not confident at all"]}
+      ]
+    },
+    {
+      title: "ROUND 4 — FINAL STAGE",
+      sub: "Last five. Your answers shape what we build next.",
+      banner: "Your view",
+      qs: [
+        {id:"q16", n:14, t:"How concerned are you about eating too much sodium?", type:"single",
+         opts:["Very concerned","Somewhat concerned","Neutral","Not very concerned","Not concerned at all"]},
+        {id:"q17", n:15, t:"Do you think your eating habits now could affect your health later?", type:"single",
+         opts:["Yes","No","Not sure"]},
+        {id:"q18", n:16, t:"What would actually get you to pick a lower-sodium option?",
+         hint:"Pick everything that would work on you.", type:"multi",
+         opts:["If it tasted better","If it cost less","Sodium shown on the menu","Clear labels on packaging","Friends recommending it","Knowing the health benefits","Nothing would change my mind"], other:true},
+        {id:"q19", n:17, t:"What's the biggest thing stopping you eating less fast food?", type:"single",
+         opts:["Taste","Convenience","Price","No healthier options nearby","Friends and social habits","Not knowing what's healthy","I don't think it's a problem"], other:true},
+        {id:"q20", n:18, t:"In one sentence, what do you know about sodium right now?",
+         hint:"Optional. Write whatever comes to mind.", type:"text"}
+      ]
+    }
+  ];
+
+  var ALL = [];
+  ROUNDS.forEach(function(r){ r.qs.forEach(function(q){ ALL.push(q); }); });
+  var REQUIRED = ALL.filter(function(q){ return q.type !== "text"; });
+
+  /* ---------------- State ---------------- */
+  var answers = {};
+  var otherText = {};
+  var screen = "attract";   // attract | 0..3 | finish
+  var stage = document.getElementById("stage");
+  var hud = document.getElementById("hud");
+  var bar = document.getElementById("bar");
+  var barNote = document.getElementById("barNote");
+  var hudRound = document.getElementById("hudRound");
+  var banner = document.getElementById("banner");
+
+  /* ---------------- Storage ---------------- */
+  function loadAll(){
+    try{
+      var raw = window.localStorage.getItem(KEY);
+      if(!raw) return [];
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    }catch(e){ return []; }
+  }
+  function saveOne(record){
+    try{
+      var list = loadAll();
+      list.push(record);
+      window.localStorage.setItem(KEY, JSON.stringify(list));
+      return true;
+    }catch(e){ return false; }
+  }
+  function sendToSheet(record){
+    if(!SHEET_WEBAPP_URL || SHEET_WEBAPP_URL.indexOf("PASTE_YOUR") === 0) return;
+    try{
+      fetch(SHEET_WEBAPP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {"Content-Type":"text/plain;charset=utf-8"},
+        body: JSON.stringify(record)
+      });
+    }catch(e){ /* local copy is still saved either way */ }
+  }
+
+  /* ---------------- Helpers ---------------- */
+  function el(tag, cls, text){
+    var n = document.createElement(tag);
+    if(cls) n.className = cls;
+    if(text != null) n.textContent = text;
+    return n;
+  }
+  function isAnswered(q){
+    var a = answers[q.id];
+    if(q.type === "multi") return Array.isArray(a) && a.length > 0;
+    if(q.type === "text") return true;
+    return typeof a === "string" && a.length > 0;
+  }
+  function answeredCount(){
+    return REQUIRED.filter(isAnswered).length;
+  }
+
+  function renderHud(){
+    var show = (screen !== "attract" && screen !== "finish");
+    hud.hidden = !show;
+    if(!show) return;
+    var done = answeredCount(), total = REQUIRED.length;
+    if(bar.children.length !== total){
+      bar.textContent = "";
+      for(var i=0;i<total;i++) bar.appendChild(el("i"));
+    }
+    for(var j=0;j<total;j++){
+      bar.children[j].className = j < done ? "on" : "";
+    }
+    barNote.textContent = done + " of " + total + " answered";
+    hudRound.textContent = "ROUND " + (screen+1) + "/" + ROUNDS.length;
+  }
+
+  /* ---------------- Screens ---------------- */
+  function renderAttract(){
+    stage.textContent = "";
+    var a = el("div","attract");
+    var h1 = el("h1","marquee");
+    h1.appendChild(el("span","","GAME"));
+    h1.appendChild(el("span","","OVER"));
+    a.appendChild(h1);
+    a.appendChild(el("p","tagline","Stop the salt before it stops you"));
+    a.appendChild(el("p","lede","Eighteen questions about what you eat and what you know about salt. It takes about two minutes. Your answers are anonymous and are only used for research."));
+    var btn = el("button","coin","PRESS START");
+    btn.type = "button";
+    btn.addEventListener("click", function(){ goTo(0, true); });
+    a.appendChild(btn);
+    a.appendChild(el("div","blink","INSERT NO COIN — IT'S FREE"));
+    a.appendChild(el("div","meta","4 rounds · 18 questions · no names collected"));
+    stage.appendChild(a);
+    renderHud();
+    window.scrollTo(0,0);
+  }
+
+  function buildQuestion(q){
+    var card = el("div","q");
+    if(isAnswered(q) && q.type !== "text") card.classList.add("done");
+    card.id = "card-" + q.id;
+
+    card.appendChild(el("span","q-n","Q" + q.n + (q.type === "multi" ? " · PICK ANY" : q.type === "text" ? " · OPTIONAL" : "")));
+    var t = el("p","q-t", q.t);
+    card.appendChild(t);
+    if(q.hint) card.appendChild(el("p","q-hint", q.hint));
+
+    if(q.type === "text"){
+      var ta = el("textarea");
+      ta.id = "in-" + q.id;
+      ta.placeholder = "It's in a lot of food and too much is bad for you...";
+      ta.value = answers[q.id] || "";
+      ta.setAttribute("aria-label", q.t);
+      ta.addEventListener("input", function(){ answers[q.id] = ta.value; });
+      card.appendChild(ta);
+      return card;
+    }
+
+    var group = el("div","opts");
+    group.setAttribute("role", q.type === "multi" ? "group" : "radiogroup");
+    group.setAttribute("aria-label", q.t);
+
+    var list = q.opts.slice();
+    if(q.other) list.push("Something else");
+
+    list.forEach(function(label){
+      var b = el("button","opt");
+      b.type = "button";
+      b.dataset.shape = q.type;
+      b.dataset.value = label;
+      var selected = q.type === "multi"
+        ? (Array.isArray(answers[q.id]) && answers[q.id].indexOf(label) > -1)
+        : answers[q.id] === label;
+      b.setAttribute("aria-pressed", selected ? "true" : "false");
+      b.appendChild(el("span","mark"));
+      b.appendChild(el("span","label",label));
+      b.addEventListener("click", function(){ pick(q, label, card); });
+      group.appendChild(b);
+    });
+    card.appendChild(group);
+
+    if(q.other){
+      var otherWrap = el("div");
+      otherWrap.id = "other-" + q.id;
+      var chosenOther = q.type === "multi"
+        ? (Array.isArray(answers[q.id]) && answers[q.id].indexOf("Something else") > -1)
+        : answers[q.id] === "Something else";
+      otherWrap.hidden = !chosenOther;
+      var inp = el("input");
+      inp.type = "text";
+      inp.placeholder = "Tell us what";
+      inp.value = otherText[q.id] || "";
+      inp.setAttribute("aria-label","Please describe");
+      inp.addEventListener("input", function(){ otherText[q.id] = inp.value; });
+      otherWrap.appendChild(inp);
+      card.appendChild(otherWrap);
+    }
+    return card;
+  }
+
+  function pick(q, label, card){
+    if(q.type === "multi"){
+      var cur = Array.isArray(answers[q.id]) ? answers[q.id].slice() : [];
+      var at = cur.indexOf(label);
+      if(at > -1) cur.splice(at,1); else cur.push(label);
+      answers[q.id] = cur;
+    }else{
+      answers[q.id] = (answers[q.id] === label) ? "" : label;
+    }
+    // repaint just this card's buttons
+    var btns = card.querySelectorAll(".opt");
+    for(var i=0;i<btns.length;i++){
+      var v = btns[i].dataset.value;
+      var on = q.type === "multi"
+        ? (answers[q.id].indexOf(v) > -1)
+        : answers[q.id] === v;
+      btns[i].setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    if(q.other){
+      var ow = document.getElementById("other-" + q.id);
+      if(ow){
+        var show = q.type === "multi"
+          ? (answers[q.id].indexOf("Something else") > -1)
+          : answers[q.id] === "Something else";
+        ow.hidden = !show;
+      }
+    }
+    card.classList.toggle("done", isAnswered(q));
+    renderHud();
+    refreshNav();
+  }
+
+  var navState = {next:null, nag:null, round:null};
+
+  function refreshNav(){
+    if(!navState.next || navState.round == null) return;
+    var pending = ROUNDS[navState.round].qs.filter(function(q){ return !isAnswered(q); });
+    navState.next.disabled = pending.length > 0;
+    if(pending.length === 0) navState.nag.hidden = true;
+  }
+
+  function renderRound(i){
+    stage.textContent = "";
+    var r = ROUNDS[i];
+    var head = el("div","round-head");
+    head.appendChild(el("h2","",r.title));
+    head.appendChild(el("p","",r.sub));
+    stage.appendChild(head);
+
+    r.qs.forEach(function(q){ stage.appendChild(buildQuestion(q)); });
+
+    var nav = el("div","nav");
+    var back = el("button","back", i === 0 ? "◀ EXIT" : "◀ BACK");
+    back.type = "button";
+    back.addEventListener("click", function(){
+      if(i === 0){ screen = "attract"; renderAttract(); }
+      else goTo(i-1, false);
+    });
+    var next = el("button","next", i === ROUNDS.length-1 ? "FINISH RUN ▶" : "NEXT ROUND ▶");
+    next.type = "button";
+    next.addEventListener("click", function(){
+      var pending = ROUNDS[i].qs.filter(function(q){ return !isAnswered(q); });
+      if(pending.length){
+        nag.hidden = false;
+        nag.textContent = pending.length === 1
+          ? "One question left in this round — Q" + pending[0].n + "."
+          : pending.length + " questions left in this round, starting at Q" + pending[0].n + ".";
+        var card = document.getElementById("card-" + pending[0].id);
+        if(card) card.scrollIntoView({behavior:"smooth", block:"center"});
+        return;
+      }
+      if(i === ROUNDS.length-1) finish();
+      else goTo(i+1, true);
+    });
+    nav.appendChild(back);
+    nav.appendChild(next);
+    stage.appendChild(nav);
+
+    var nag = el("p","nag");
+    nag.hidden = true;
+    stage.appendChild(nag);
+
+    navState = {next:next, nag:nag, round:i};
+    refreshNav();
+    renderHud();
+    window.scrollTo(0,0);
+  }
+
+  function goTo(i, showBanner){
+    screen = i;
+    if(showBanner){
+      document.getElementById("bannerTitle").textContent = "ROUND " + (i+1);
+      document.getElementById("bannerSub").textContent = ROUNDS[i].banner;
+      banner.hidden = false;
+      window.setTimeout(function(){
+        banner.hidden = true;
+        renderRound(i);
+      }, 850);
+    }else{
+      renderRound(i);
+    }
+  }
+
+  function finish(){
+    screen = "finish";
+    var record = { submitted: new Date().toISOString() };
+    ALL.forEach(function(q){
+      var a = answers[q.id];
+      if(q.type === "multi") a = (a || []).join("; ");
+      record[q.id] = a || "";
+      if(q.other) record[q.id + "_other"] = otherText[q.id] || "";
+    });
+    var saved = saveOne(record);
+    sendToSheet(record);
+
+    stage.textContent = "";
+    var f = el("div","finish");
+    f.appendChild(el("h2","score","RUN COMPLETE"));
+    f.appendChild(el("p","","Thanks — that's your baseline logged. Now go take on the booth: check your blood pressure, see how many teaspoons of salt are hiding in your usual order, and beat the boss."));
+    f.appendChild(el("p","small", saved
+      ? "Your answers were saved without your name attached."
+      : "This device blocked storage, so your answers weren't saved. Tell the person running the booth."));
+
+    var priv = el("div","facts");
+    priv.appendChild(el("h3","YOUR PRIVACY"));
+    var pp = el("p","");
+    pp.style.margin = "0";
+    pp.style.fontSize = "16px";
+    pp.textContent = "This survey is completely anonymous and will be used for research purposes only. We don't collect your name, school ID or contact details, and no answer can be traced back to you. Results are reported as group totals as part of a student public health project.";
+    priv.appendChild(pp);
+    f.appendChild(priv);
+
+    var facts = el("div","facts");
+    facts.appendChild(el("h3","BEFORE YOU GO"));
+    var ul = el("ul");
+    [
+      "The WHO limit for adults is under 5 g of salt a day — about one level teaspoon, everything included.",
+      "Around 65% of people in a UAE study eat more than that, mostly from fast food and packaged food.",
+      "Blood pressure can start climbing in your teens without a single symptom you'd notice.",
+      "Swap one delivery order a week for something you build yourself and you've already cut a chunk of it."
+    ].forEach(function(s){ ul.appendChild(el("li","",s)); });
+    facts.appendChild(ul);
+    f.appendChild(facts);
+
+    var again = el("button","ghost","Start a new response for the next player");
+    again.type = "button";
+    again.addEventListener("click", function(){
+      answers = {}; otherText = {};
+      renderAttract();
+      screen = "attract";
+    });
+    f.appendChild(again);
+    stage.appendChild(f);
+    renderHud();
+    window.scrollTo(0,0);
+  }
+
+  /* ---------------- Booth tools ---------------- */
+  function csv(){
+    var cols = ["submitted"];
+    ALL.forEach(function(q){
+      cols.push(q.id);
+      if(q.other) cols.push(q.id + "_other");
+    });
+    var head = ["timestamp"];
+    ALL.forEach(function(q){
+      head.push("Q" + q.n + " " + q.t);
+      if(q.other) head.push("Q" + q.n + " other");
+    });
+    function cell(v){
+      v = (v == null ? "" : String(v));
+      return '"' + v.replace(/"/g,'""') + '"';
+    }
+    var rows = [head.map(cell).join(",")];
+    loadAll().forEach(function(r){
+      rows.push(cols.map(function(c){ return cell(r[c]); }).join(","));
+    });
+    return rows.join("\r\n");
+  }
+
+  var toolsPanel = null;
+  document.getElementById("toolsToggle").addEventListener("click", function(){
+    if(toolsPanel){
+      toolsPanel.remove();
+      toolsPanel = null;
+      return;
+    }
+    toolsPanel = el("div","tools");
+    var h = el("h3","BOOTH TOOLS");
+    toolsPanel.appendChild(h);
+    var count = el("p","count");
+    var n = loadAll().length;
+    count.appendChild(el("b","",String(n)));
+    count.appendChild(document.createTextNode(n === 1 ? " response saved on this device" : " responses saved on this device"));
+    toolsPanel.appendChild(count);
+
+    var row = el("div","row");
+    var dl = el("button","","Download CSV");
+    dl.type = "button";
+    var show = el("button","","Show CSV to copy");
+    show.type = "button";
+    var clear = el("button","danger","Erase this device's responses");
+    clear.type = "button";
+    row.appendChild(dl); row.appendChild(show); row.appendChild(clear);
+    toolsPanel.appendChild(row);
+    var msg = el("p","msg");
+    toolsPanel.appendChild(msg);
+
+    dl.addEventListener("click", async function(){
+      if(loadAll().length === 0){ msg.textContent = "Nothing to export yet."; return; }
+      msg.textContent = "Preparing file...";
+      try{
+        var downloads = await window.claude.use("downloads");
+        if(!downloads){
+          msg.textContent = "Downloads aren't available here — use “Show CSV to copy” instead.";
+          return;
+        }
+        await downloads.save({ filename: "salt-survey-responses.csv", data: csv() });
+        msg.textContent = "Saved.";
+      }catch(e){
+        msg.textContent = "The download didn't go through. Use “Show CSV to copy” instead.";
+      }
+    });
+
+    show.addEventListener("click", function(){
+      var existing = toolsPanel.querySelector("textarea");
+      if(existing){ existing.remove(); msg.textContent = ""; return; }
+      if(loadAll().length === 0){ msg.textContent = "Nothing to export yet."; return; }
+      var ta = el("textarea");
+      ta.value = csv();
+      ta.readOnly = true;
+      ta.setAttribute("aria-label","CSV of all responses");
+      toolsPanel.appendChild(ta);
+      ta.select();
+      msg.textContent = "Select all and copy into Excel or Google Sheets.";
+    });
+
+    clear.addEventListener("click", function(){
+      if(!window.confirm("Erase every response saved on this device? Export first if you haven't.")) return;
+      try{ window.localStorage.removeItem(KEY); }catch(e){}
+      msg.textContent = "Device cleared.";
+      count.textContent = "0 responses saved on this device";
+      var ta = toolsPanel.querySelector("textarea");
+      if(ta) ta.remove();
+    });
+
+    document.querySelector(".wrap").appendChild(toolsPanel);
+    toolsPanel.scrollIntoView({behavior:"smooth", block:"end"});
+  });
+
+  renderAttract();
+})();
+</script>
+</body>
+</html>
